@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CipherVault | Zero-Knowledge Manager</title>
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'sha256-vvt4KWwuNr51XfE5m+hzeNEGhiOfZzG97ccfqGsPwvE='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>">
+</head>
+
+<body>
+
+    <!-- ── Auth Overlay ───────────────────────────────────────────────────── -->
+    <div id="auth-overlay" class="auth-screen" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+        <div class="auth-box">
+            <div class="auth-logo">🔒</div>
+            <h1>CipherVault</h1>
+            <p id="auth-desc">Your zero-knowledge password manager</p>
+            <h2 id="auth-title">Setup Your Vault</h2>
+            <div class="input-group">
+                <input type="password" id="master-pwd-input" placeholder="Master Password (min 12 chars)"
+                    autocomplete="new-password">
+                <button id="pwd-toggle-btn" type="button" class="pwd-eye"
+                    aria-label="Toggle password visibility">🙈</button>
+            </div>
+            <div id="auth-strength" class="strength-bar-wrap hidden">
+                <div class="strength-bar">
+                    <div id="auth-strength-fill" class="strength-fill"></div>
+                </div>
+                <span id="auth-strength-label"></span>
+            </div>
+            <button id="unlock-btn" class="primary full-width">Access Vault</button>
+        </div>
+    </div>
+
+    <!-- ── Main App ──────────────────────────────────────────────────────── -->
+    <div id="main-content" class="hidden app-layout">
+
+        <!-- Left Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <span class="brand-icon">🔒</span>
+                <div class="brand-text">
+                    <span class="brand-name">CipherVault</span>
+                    <span class="brand-clock" id="brand-clock">00:00:00.000</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <p class="nav-label">Categories</p>
+                <button class="nav-item active" data-category="All">
+                    <span class="nav-icon">🗂</span> All Items
+                </button>
+                <button class="nav-item" data-category="General">
+                    <span class="nav-icon">📋</span> General
+                </button>
+                <button class="nav-item" data-category="Social">
+                    <span class="nav-icon">💬</span> Social
+                </button>
+                <button class="nav-item" data-category="Work">
+                    <span class="nav-icon">💼</span> Work
+                </button>
+                <button class="nav-item" data-category="Personal">
+                    <span class="nav-icon">👤</span> Personal
+                </button>
+                <button class="nav-item" data-category="Banking">
+                    <span class="nav-icon">🏦</span> Banking
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <p class="nav-label">Tools</p>
+                <button class="nav-item" id="gen-panel-btn">
+                    <span class="nav-icon">🔑</span> Password Generator
+                </button>
+                <button class="nav-item" id="export-btn">
+                    <span class="nav-icon">📤</span> Export Vault
+                </button>
+                <input type="file" id="import-input" accept=".json" class="hidden" aria-hidden="true">
+                <button class="nav-item" id="import-trigger-btn">
+                    <span class="nav-icon">📥</span> Import Vault
+                </button>
+            </div>
+        </aside>
+
+        <!-- Middle Panel: Credential List -->
+        <section class="list-panel">
+            <header class="list-header">
+                <div class="search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-input" placeholder="Search..." aria-label="Search credentials">
+                </div>
+                <div class="list-header-actions">
+                    <button id="theme-toggle" aria-label="Toggle dark mode" class="icon-btn">🌓</button>
+                    <button id="lock-btn" class="icon-btn">🔐 Lock</button>
+                    <button id="add-cred-btn" class="primary">+ Add New</button>
+                </div>
+            </header>
+
+            <div class="security-banner hidden" id="security-banner">
+                <span id="security-banner-text"></span>
+            </div>
+
+            <div id="credential-list" role="list"></div>
+        </section>
+
+        <!-- Right Panel: Detail View -->
+        <section class="detail-panel" id="detail-panel">
+            <div class="detail-empty" id="detail-empty">
+                <div class="detail-empty-icon">🔒</div>
+                <p>Select a credential to view details</p>
+            </div>
+            <div class="detail-content hidden" id="detail-content">
+                <div class="detail-header">
+                    <div class="detail-avatar" id="detail-avatar"></div>
+                    <div>
+                        <h2 id="detail-service"></h2>
+                        <div class="detail-category-row">
+                            <span class="detail-category-badge" id="detail-category"></span>
+                            <button class="change-cat-btn" id="change-cat-btn">✏️ Change</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Change Category Dropdown (hidden by default) -->
+                <div class="change-cat-panel hidden" id="change-cat-panel">
+                    <label for="change-cat-select">Move to category:</label>
+                    <div class="change-cat-row">
+                        <select id="change-cat-select">
+                            <option value="General">📋 General</option>
+                            <option value="Social">💬 Social</option>
+                            <option value="Work">💼 Work</option>
+                            <option value="Personal">👤 Personal</option>
+                            <option value="Banking">🏦 Banking</option>
+                        </select>
+                        <button class="primary" id="save-cat-btn">Save</button>
+                        <button id="cancel-cat-btn">Cancel</button>
+                    </div>
+                </div>
+                <div class="detail-fields">
+                    <div class="detail-field">
+                        <label>Username</label>
+                        <div class="field-row">
+                            <span id="detail-username"></span>
+                            <button class="copy-btn" id="copy-user-btn">Copy</button>
+                        </div>
+                    </div>
+                    <div class="detail-field">
+                        <label>Password</label>
+                        <div class="field-row">
+                            <span id="detail-password" class="pwd-hidden">••••••••••••</span>
+                            <button class="copy-btn" id="copy-pass-btn">Copy</button>
+                            <button class="copy-btn" id="reveal-pass-btn">Reveal</button>
+                        </div>
+                    </div>
+                    <div class="detail-field" id="detail-notes-wrap">
+                        <label>Notes</label>
+                        <p id="detail-notes"></p>
+                    </div>
+                    <div class="detail-field">
+                        <label>Last Updated</label>
+                        <p id="detail-updated"></p>
+                    </div>
+                </div>
+                <div class="detail-actions">
+                    <button class="primary full-width" id="detail-edit-btn">✏️ Edit Credential</button>
+                    <button class="danger full-width" id="detail-delete-btn">🗑 Delete Credential</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ── Password Generator Panel ──────────────────────────────────────── -->
+    <div id="gen-overlay" class="overlay hidden" role="dialog" aria-modal="true">
+        <div class="modal">
+            <h2>Password Generator</h2>
+            <label for="gen-length">Length: <span id="gen-length-label">16</span></label>
+            <input type="range" id="gen-length" value="16" min="8" max="64">
+            <div class="gen-result">
+                <input type="text" id="gen-output" readonly placeholder="Click Generate...">
+                <button class="primary" id="generate-btn">Generate</button>
+            </div>
+            <div id="gen-strength" class="strength-bar-wrap">
+                <div class="strength-bar">
+                    <div id="gen-strength-fill" class="strength-fill"></div>
+                </div>
+                <span id="gen-strength-label"></span>
+            </div>
+            <button class="primary full-width" id="gen-copy-btn" style="margin-top:1rem">Copy Password</button>
+            <button class="full-width" id="gen-close-btn" style="margin-top:0.5rem">Close</button>
+        </div>
+    </div>
+
+    <!-- ── Add Credential Modal ───────────────────────────────────────────── -->
+    <div id="modal-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal">
+            <h2 id="modal-title">Add Credential</h2>
+            <form id="cred-form" novalidate>
+                <label for="f-service">Service Name</label>
+                <input type="text" id="f-service" placeholder="e.g. GitHub" required autocomplete="off">
+
+                <label for="f-user">Username</label>
+                <input type="text" id="f-user" placeholder="Username" required autocomplete="off">
+
+                <label for="f-pass">Password</label>
+                <div class="input-group">
+                    <input type="password" id="f-pass" placeholder="Password" required autocomplete="new-password">
+                    <button type="button" class="pwd-eye" id="form-pwd-toggle" title="Show/hide password">🙈</button>
+                    <button type="button" class="pwd-eye gen-inline-btn" id="form-gen-btn"
+                        title="Generate password">🎲</button>
+                </div>
+                <div class="strength-bar-wrap" id="form-strength-wrap">
+                    <div class="strength-bar">
+                        <div id="form-strength-fill" class="strength-fill"></div>
+                    </div>
+                    <span id="form-strength-label"></span>
+                </div>
+
+                <label for="f-category">Category</label>
+                <select id="f-category">
+                    <option value="General">General</option>
+                    <option value="Social">Social</option>
+                    <option value="Work">Work</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Banking">Banking</option>
+                </select>
+
+                <label for="f-notes">Notes</label>
+                <textarea id="f-notes" placeholder="Optional notes"></textarea>
+
+                <div class="modal-actions">
+                    <button type="button" id="close-modal">Cancel</button>
+                    <button type="submit" class="primary">Save Securely</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+
+</html>
